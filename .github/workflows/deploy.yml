@@ -1,43 +1,110 @@
-name: Deploy to EC2
+name: CI/CD Pipeline (DevSecOps)
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
+
+      # 1. Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # -----------------------------
+      # 🟦 CI PHASE (QUALITY + SECURITY)
+      # -----------------------------
+
+      # 2. Setup Node
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # 3. Install Backend Dependencies
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm install
+
+      # 4. Run ESLint (Backend)
+      - name: Run ESLint (Backend)
+        working-directory: ./backend
+        run: |
+          npx eslint . || echo "ESLint issues found (continuing)"
+
+      # 5. Run npm audit (Backend)
+      - name: Security Scan (Backend)
+        working-directory: ./backend
+        run: |
+          npm audit --audit-level=moderate || echo "Vulnerabilities found"
+
+      # 6. Install Frontend Dependencies
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      # 7. Run ESLint (Frontend)
+      - name: Run ESLint (Frontend)
+        working-directory: ./frontend
+        run: |
+          npx eslint . || echo "ESLint issues found (continuing)"
+
+      # 8. Run npm audit (Frontend)
+      - name: Security Scan (Frontend)
+        working-directory: ./frontend
+        run: |
+          npm audit --audit-level=moderate || echo "Vulnerabilities found"
+
+      # 9. Build Frontend
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      # -----------------------------
+      # 🟩 CD PHASE (DEPLOYMENT)
+      # -----------------------------
+
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
+
           script: |
 
-            echo "Pull latest code"
+            echo "🚀 Starting Deployment..."
+
             cd ~/task-tracker
+
+            echo "📥 Pull latest code"
             git pull origin main
 
-            echo "Install backend"
+            echo "📦 Install backend dependencies"
             cd backend
             npm install
 
-            echo "Restart backend"
+            echo "🔄 Restart backend"
             pm2 restart task-backend || pm2 start server.js --name task-backend
 
-            echo "Build frontend"
+            echo "🌐 Build frontend"
             cd ../frontend
             npm install
             npm run build
 
-            echo "Deploy frontend"
+            echo "🧹 Clean old frontend"
             sudo rm -rf /var/www/html/*
+
+            echo "📂 Deploy new frontend"
             sudo cp -r build/* /var/www/html/
 
-            echo "Restart nginx"
+            echo "🔐 Fix permissions"
+            sudo chown -R www-data:www-data /var/www/html
+
+            echo "🔁 Restart Nginx"
             sudo systemctl restart nginx
 
-            echo "Done!"
+            echo "✅ Deployment Complete!"
