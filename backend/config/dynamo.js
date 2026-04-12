@@ -1,11 +1,11 @@
-// config/dynamo.js
-// This file sets up connection with AWS DynamoDB
-
 import AWS from "aws-sdk";
 
-// Make sure your AWS region matches your lab
 AWS.config.update({
   region: "us-east-1",
+
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  sessionToken: process.env.AWS_SESSION_TOKEN, // 🔥 IMPORTANT
 });
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
