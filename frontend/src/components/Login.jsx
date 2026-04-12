@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import API from "../api";
 import "../styles/main.css";
 
-function Login({ setUser }) {
+function Login({ setUser, goToRegister }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -16,16 +16,31 @@ function Login({ setUser }) {
       setUser(payload);
 
     } catch {
-      alert("Login failed");
+      alert("Invalid credentials");
     }
   };
 
   return (
     <div className="container">
       <h2>Login</h2>
-      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+
+      <input
+        placeholder="Email"
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      <input
+        type="password"
+        placeholder="Password"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
       <button onClick={handleLogin}>Login</button>
+
+      <p>
+        Don’t have an account?{" "}
+        <button onClick={goToRegister}>Register</button>
+      </p>
     </div>
   );
 }

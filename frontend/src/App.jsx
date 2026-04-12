@@ -5,13 +5,13 @@ import Dashboard from "./components/Dashboard";
 
 function App() {
   const [user, setUser] = useState(null);
+  const [showRegister, setShowRegister] = useState(false);
 
   if (!user) {
-    return (
-      <>
-        <Login setUser={setUser} />
-        <Register />
-      </>
+    return showRegister ? (
+      <Register goToLogin={() => setShowRegister(false)} />
+    ) : (
+      <Login setUser={setUser} goToRegister={() => setShowRegister(true)} />
     );
   }
 
