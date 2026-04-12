@@ -12,6 +12,8 @@ router.post("/register", async (req, res) => {
   const { email, password, role } = req.body;
 
   try {
+    console.log("Register request:", email);
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const params = {
@@ -26,11 +28,12 @@ router.post("/register", async (req, res) => {
     await dynamoDB.put(params).promise();
 
     res.json({ message: "User registered successfully" });
+
   } catch (err) {
+    console.error("REGISTER ERROR:", err);   // 🔥 IMPORTANT
     res.status(500).json({ error: err.message });
   }
 });
-
 // LOGIN USER
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
