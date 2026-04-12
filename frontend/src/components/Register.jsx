@@ -25,7 +25,7 @@ function Register({ goToLogin }) {
 
   return (
     <div className="container">
-      <h2>Register</h2>
+      <h2>Sign-Up</h2>
 
       <input
         placeholder="Email"
