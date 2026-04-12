@@ -4,7 +4,7 @@ import axios from "axios";
 
 // Base URL of your backend server
 const API = axios.create({
-  baseURL: "http://YOUR_EC2_IP:5001/api",
+  baseURL: "http://35.175.164.94/api",
 });
 
 // Automatically attach JWT token to requests
