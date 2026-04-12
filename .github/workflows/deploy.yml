@@ -1,4 +1,4 @@
-name: CI/CD Pipeline (DevSecOps)
+name: CI/CD Pipeline (Final)
 
 on:
   push:
@@ -10,63 +10,61 @@ jobs:
 
     steps:
 
-      # 1. Checkout code
+      # -----------------------------
+      # 🟦 CHECKOUT CODE
+      # -----------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       # -----------------------------
-      # 🟦 CI PHASE (QUALITY + SECURITY)
+      # 🟦 SETUP NODE
       # -----------------------------
-
-      # 2. Setup Node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      # 3. Install Backend Dependencies
+      # -----------------------------
+      # 🟦 BACKEND CI
+      # -----------------------------
       - name: Install Backend Dependencies
         working-directory: ./backend
         run: npm install
 
-      # 4. Run ESLint (Backend)
       - name: Run ESLint (Backend)
         working-directory: ./backend
         run: |
-          npx eslint . || echo "ESLint issues found (continuing)"
+          npx eslint . || echo "ESLint issues found"
 
-      # 5. Run npm audit (Backend)
       - name: Security Scan (Backend)
         working-directory: ./backend
         run: |
           npm audit --audit-level=moderate || echo "Vulnerabilities found"
 
-      # 6. Install Frontend Dependencies
+      # -----------------------------
+      # 🟦 FRONTEND CI
+      # -----------------------------
       - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm install
 
-      # 7. Run ESLint (Frontend)
       - name: Run ESLint (Frontend)
         working-directory: ./frontend
         run: |
-          npx eslint . || echo "ESLint issues found (continuing)"
+          npx eslint . || echo "ESLint issues found"
 
-      # 8. Run npm audit (Frontend)
       - name: Security Scan (Frontend)
         working-directory: ./frontend
         run: |
           npm audit --audit-level=moderate || echo "Vulnerabilities found"
 
-      # 9. Build Frontend
       - name: Build Frontend
         working-directory: ./frontend
         run: npm run build
 
       # -----------------------------
-      # 🟩 CD PHASE (DEPLOYMENT)
+      # 🟩 DEPLOY TO EC2
       # -----------------------------
-
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -78,33 +76,54 @@ jobs:
 
             echo "🚀 Starting Deployment..."
 
-            cd ~/task-tracker
+            # 🔥 IMPORTANT: Correct folder name
+            cd ~/Task-Tracker
 
             echo "📥 Pull latest code"
             git pull origin main
 
-            echo "📦 Install backend dependencies"
+            # -----------------------------
+            # 🟦 BACKEND DEPLOY
+            # -----------------------------
+            echo "📦 Installing backend dependencies"
             cd backend
             npm install
 
             echo "🔄 Restart backend"
             pm2 restart task-backend || pm2 start server.js --name task-backend
 
-            echo "🌐 Build frontend"
-            cd ../frontend
+            # -----------------------------
+            # 🟦 FRONTEND DEPLOY
+            # -----------------------------
+            echo "🌐 Moving to frontend"
+            cd ~/Task-Tracker/frontend
+
+            echo "📦 Installing frontend dependencies"
             npm install
+
+            echo "🏗️ Building frontend"
             npm run build
 
-            echo "🧹 Clean old frontend"
+            echo "🔍 Checking build output"
+            ls build
+
+            # -----------------------------
+            # 🟦 DEPLOY BUILD
+            # -----------------------------
+            echo "🧹 Cleaning old frontend"
             sudo rm -rf /var/www/html/*
 
-            echo "📂 Deploy new frontend"
+            echo "📂 Copying new build"
             sudo cp -r build/* /var/www/html/
 
             echo "🔐 Fix permissions"
             sudo chown -R www-data:www-data /var/www/html
+            sudo chmod -R 755 /var/www/html
 
-            echo "🔁 Restart Nginx"
+            # -----------------------------
+            # 🟦 RESTART NGINX
+            # -----------------------------
+            echo "🔁 Restarting Nginx"
             sudo systemctl restart nginx
 
             echo "✅ Deployment Complete!"
