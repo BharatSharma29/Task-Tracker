@@ -1,0 +1,43 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+
+            echo "Pull latest code"
+            cd ~/task-tracker
+            git pull origin main
+
+            echo "Install backend"
+            cd backend
+            npm install
+
+            echo "Restart backend"
+            pm2 restart task-backend || pm2 start server.js --name task-backend
+
+            echo "Build frontend"
+            cd ../frontend
+            npm install
+            npm run build
+
+            echo "Deploy frontend"
+            sudo rm -rf /var/www/html/*
+            sudo cp -r build/* /var/www/html/
+
+            echo "Restart nginx"
+            sudo systemctl restart nginx
+
+            echo "Done!"
