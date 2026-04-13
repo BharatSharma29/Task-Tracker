@@ -1,13 +1,12 @@
-// routes/authRoutes.js
-
 import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dynamoDB from "../config/dynamo.js";
+import sns from "../config/sns.js";
 
 const router = express.Router();
 
-// REGISTER USER
+// REGISTER
 router.post("/register", async (req, res) => {
   const { email, password, role } = req.body;
 
@@ -27,14 +26,21 @@ router.post("/register", async (req, res) => {
 
     await dynamoDB.put(params).promise();
 
+    // 🔥 SNS Notification
+    await sns.publish({
+      Message: `New user registered: ${email}`,
+      TopicArn: process.env.SNS_TOPIC_ARN,
+    }).promise();
+
     res.json({ message: "User registered successfully" });
 
   } catch (err) {
-    console.error("REGISTER ERROR:", err);   // 🔥 IMPORTANT
+    console.error("REGISTER ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
-// LOGIN USER
+
+// LOGIN
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -45,7 +51,6 @@ router.post("/login", async (req, res) => {
     };
 
     const result = await dynamoDB.get(params).promise();
-
     const user = result.Item;
 
     if (!user) {
@@ -55,7 +60,7 @@ router.post("/login", async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      return res.status(401).json({ message: "Wrong password" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
@@ -64,7 +69,9 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({ token });
+
   } catch (err) {
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });

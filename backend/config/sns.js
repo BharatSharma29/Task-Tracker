@@ -1,6 +1,6 @@
 import AWS from "aws-sdk";
 
-// Configure AWS (IMPORTANT: uses env variables)
+// Same credentials config
 AWS.config.update({
   region: "us-east-1",
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -8,6 +8,6 @@ AWS.config.update({
   sessionToken: process.env.AWS_SESSION_TOKEN,
 });
 
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
+const sns = new AWS.SNS();
 
-export default dynamoDB;
+export default sns;
