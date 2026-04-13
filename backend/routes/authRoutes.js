@@ -26,11 +26,15 @@ router.post("/register", async (req, res) => {
 
     await dynamoDB.put(params).promise();
 
-    // 🔥 SNS Notification
-    await sns.publish({
-      Message: `New user registered: ${email}`,
-      TopicArn: process.env.SNS_TOPIC_ARN,
-    }).promise();
+    // 🔥 SNS SAFE WRAPPER
+    try {
+      await sns.publish({
+        Message: `New user registered: ${email} (${role})`,
+        TopicArn: process.env.SNS_TOPIC_ARN,
+      }).promise();
+    } catch (snsErr) {
+      console.error("SNS ERROR:", snsErr.message);
+    }
 
     res.json({ message: "User registered successfully" });
 
