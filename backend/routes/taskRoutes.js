@@ -12,6 +12,8 @@ router.post("/", verifyToken, async (req, res) => {
   const { title, description, status } = req.body;
 
   try {
+    console.log("Create task request:", title);
+
     const params = {
       TableName: "Tasks",
       Item: {
@@ -25,13 +27,17 @@ router.post("/", verifyToken, async (req, res) => {
 
     await dynamoDB.put(params).promise();
 
-    // 🔥 SNS Notification
-    await sns.publish({
-      Message: `New task created: ${title}`,
-      TopicArn: process.env.SNS_TOPIC_ARN,
-    }).promise();
+    // 🔥 SNS (safe wrapper so it doesn't break app)
+    try {
+      await sns.publish({
+        Message: `New task created: ${title}`,
+        TopicArn: process.env.SNS_TOPIC_ARN,
+      }).promise();
+    } catch (snsErr) {
+      console.error("SNS ERROR:", snsErr.message);
+    }
 
-    res.json({ message: "Task created" });
+    res.json({ message: "Task created successfully" });
 
   } catch (err) {
     console.error("CREATE TASK ERROR:", err);
@@ -44,10 +50,12 @@ router.get("/", verifyToken, async (req, res) => {
   try {
     const data = await dynamoDB.scan({ TableName: "Tasks" }).promise();
 
+    // Admin sees all tasks
     if (req.user.role === "admin") {
       return res.json(data.Items);
     }
 
+    // Normal user sees only their tasks
     const userTasks = data.Items.filter(
       (task) => task.user_email === req.user.email
     );
@@ -79,7 +87,7 @@ router.put("/:id", verifyToken, async (req, res) => {
 
     await dynamoDB.update(params).promise();
 
-    res.json({ message: "Task updated" });
+    res.json({ message: "Task updated successfully" });
 
   } catch (err) {
     console.error("UPDATE TASK ERROR:", err);
@@ -97,7 +105,7 @@ router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
 
     await dynamoDB.delete(params).promise();
 
-    res.json({ message: "Task deleted" });
+    res.json({ message: "Task deleted successfully" });
 
   } catch (err) {
     console.error("DELETE TASK ERROR:", err);
