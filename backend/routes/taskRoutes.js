@@ -14,7 +14,7 @@ router.post("/", verifyToken, async (req, res) => {
   try {
     console.log("Create task request:", title);
 
-    const params = {
+    await dynamoDB.put({
       TableName: "Tasks",
       Item: {
         id: uuidv4(),
@@ -23,18 +23,22 @@ router.post("/", verifyToken, async (req, res) => {
         status,
         user_email: req.user.email,
       },
-    };
+    }).promise();
 
-    await dynamoDB.put(params).promise();
-
-    // 🔥 SNS (safe wrapper so it doesn't break app)
+    // 🔥 SNS NOTIFICATION (SAFE + DEBUG)
     try {
-      await sns.publish({
-        Message: `New task created: ${title}`,
+      console.log("Sending SNS for task...");
+
+      const result = await sns.publish({
+        Message: `Task Created: ${title}`,
+        Subject: "New Task Created",
         TopicArn: process.env.SNS_TOPIC_ARN,
       }).promise();
+
+      console.log("SNS SUCCESS (TASK):", result);
+
     } catch (snsErr) {
-      console.error("SNS ERROR:", snsErr.message);
+      console.error("SNS ERROR (TASK):", snsErr.message);
     }
 
     res.json({ message: "Task created successfully" });
@@ -50,12 +54,8 @@ router.get("/", verifyToken, async (req, res) => {
   try {
     const data = await dynamoDB.scan({ TableName: "Tasks" }).promise();
 
-    // Admin sees all tasks
-    if (req.user.role === "admin") {
-      return res.json(data.Items);
-    }
+    if (req.user.role === "admin") return res.json(data.Items);
 
-    // Normal user sees only their tasks
     const userTasks = data.Items.filter(
       (task) => task.user_email === req.user.email
     );
@@ -73,19 +73,13 @@ router.put("/:id", verifyToken, async (req, res) => {
   const { status } = req.body;
 
   try {
-    const params = {
+    await dynamoDB.update({
       TableName: "Tasks",
       Key: { id: req.params.id },
       UpdateExpression: "set #s = :status",
-      ExpressionAttributeNames: {
-        "#s": "status",
-      },
-      ExpressionAttributeValues: {
-        ":status": status,
-      },
-    };
-
-    await dynamoDB.update(params).promise();
+      ExpressionAttributeNames: { "#s": "status" },
+      ExpressionAttributeValues: { ":status": status },
+    }).promise();
 
     res.json({ message: "Task updated successfully" });
 
@@ -95,15 +89,13 @@ router.put("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// DELETE TASK (ADMIN ONLY)
+// DELETE TASK (ADMIN)
 router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
-    const params = {
+    await dynamoDB.delete({
       TableName: "Tasks",
       Key: { id: req.params.id },
-    };
-
-    await dynamoDB.delete(params).promise();
+    }).promise();
 
     res.json({ message: "Task deleted successfully" });
 

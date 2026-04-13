@@ -1,6 +1,5 @@
 import AWS from "aws-sdk";
 
-// Same credentials config
 AWS.config.update({
   region: "us-east-1",
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -8,6 +7,6 @@ AWS.config.update({
   sessionToken: process.env.AWS_SESSION_TOKEN,
 });
 
-const sns = new AWS.SNS();
+const sns = new AWS.SNS({ apiVersion: "2010-03-31" });
 
 export default sns;

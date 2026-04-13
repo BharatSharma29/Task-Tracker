@@ -15,25 +15,29 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const params = {
+    await dynamoDB.put({
       TableName: "Users",
       Item: {
         email,
         password: hashedPassword,
         role: role || "user",
       },
-    };
+    }).promise();
 
-    await dynamoDB.put(params).promise();
-
-    // 🔥 SNS SAFE WRAPPER
+    // 🔥 SNS NOTIFICATION (SAFE + DEBUG)
     try {
-      await sns.publish({
-        Message: `New user registered: ${email} (${role})`,
+      console.log("Sending SNS for register...");
+
+      const result = await sns.publish({
+        Message: `User Registered: ${email} (${role})`,
+        Subject: "New User Registration",
         TopicArn: process.env.SNS_TOPIC_ARN,
       }).promise();
+
+      console.log("SNS SUCCESS (REGISTER):", result);
+
     } catch (snsErr) {
-      console.error("SNS ERROR:", snsErr.message);
+      console.error("SNS ERROR (REGISTER):", snsErr.message);
     }
 
     res.json({ message: "User registered successfully" });
@@ -49,23 +53,18 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const params = {
+    const result = await dynamoDB.get({
       TableName: "Users",
       Key: { email },
-    };
+    }).promise();
 
-    const result = await dynamoDB.get(params).promise();
     const user = result.Item;
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const match = await bcrypt.compare(password, user.password);
 
-    if (!match) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
+    if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
       { email: user.email, role: user.role },
