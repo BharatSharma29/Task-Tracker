@@ -1,6 +1,7 @@
 import express from "express";
 import dynamoDB from "../config/dynamo.js";
 import sns from "../config/sns.js";
+import sqs from "../config/sqs.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { isAdmin } from "../middleware/roleMiddleware.js";
 import { v4 as uuidv4 } from "uuid";
@@ -25,10 +26,8 @@ router.post("/", verifyToken, async (req, res) => {
       },
     }).promise();
 
-    // 🔥 SNS NOTIFICATION (SAFE + DEBUG)
+    // 🔥 SNS NOTIFICATION
     try {
-      console.log("Sending SNS for task...");
-
       const result = await sns.publish({
         Message: `Task Created: ${title}`,
         Subject: "New Task Created",
@@ -36,9 +35,24 @@ router.post("/", verifyToken, async (req, res) => {
       }).promise();
 
       console.log("SNS SUCCESS (TASK):", result);
-
     } catch (snsErr) {
       console.error("SNS ERROR (TASK):", snsErr.message);
+    }
+
+    // 🔥 SQS MESSAGE (NEW SERVICE)
+    try {
+      const sqsResult = await sqs.sendMessage({
+        QueueUrl: process.env.SQS_QUEUE_URL,
+        MessageBody: JSON.stringify({
+          event: "TASK_CREATED",
+          title: title,
+          user: req.user.email,
+        }),
+      }).promise();
+
+      console.log("SQS SUCCESS:", sqsResult);
+    } catch (sqsErr) {
+      console.error("SQS ERROR:", sqsErr.message);
     }
 
     res.json({ message: "Task created successfully" });
