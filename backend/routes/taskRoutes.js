@@ -5,7 +5,7 @@ import sqs from "../config/sqs.js";
 import s3 from "../config/s3.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { isAdmin } from "../middleware/roleMiddleware.js";
-import { v4 as uuidv4 } from "uuid";
+import { createTaskObject, formatTaskForSQS, formatTaskForS3 } from "../utils/taskUtil.js";
 
 const router = express.Router();
 
@@ -16,22 +16,19 @@ router.post("/", verifyToken, async (req, res) => {
   try {
     console.log("Create task request:", title);
 
-    //  Save to DynamoDB
+    // 🔹 Use taskUtil to create task object
+    const task = createTaskObject(title, description, status, req.user.email);
+
+    // 🔹 Save to DynamoDB
     await dynamoDB.put({
       TableName: "Tasks",
-      Item: {
-        id: uuidv4(),
-        title,
-        description,
-        status,
-        user_email: req.user.email,
-      },
+      Item: task,
     }).promise();
 
-    //  SNS Notification
+    // 🔹 SNS Notification
     try {
       const result = await sns.publish({
-        Message: `Task Created: ${title}`,
+        Message: `Task Created: ${task.title}`,
         Subject: "New Task Created",
         TopicArn: process.env.SNS_TOPIC_ARN,
       }).promise();
@@ -41,15 +38,11 @@ router.post("/", verifyToken, async (req, res) => {
       console.error("SNS ERROR (TASK):", snsErr.message);
     }
 
-    //  SQS Message
+    // 🔹 SQS Message using taskUtil
     try {
       const sqsResult = await sqs.sendMessage({
         QueueUrl: process.env.SQS_QUEUE_URL,
-        MessageBody: JSON.stringify({
-          event: "TASK_CREATED",
-          title: title,
-          user: req.user.email,
-        }),
+        MessageBody: formatTaskForSQS(task),
       }).promise();
 
       console.log("SQS SUCCESS:", sqsResult);
@@ -57,17 +50,13 @@ router.post("/", verifyToken, async (req, res) => {
       console.error("SQS ERROR:", sqsErr.message);
     }
 
-    //  S3 Upload
+    // 🔹 S3 Upload using taskUtil
     try {
-      const fileContent = `Task Created:
-Title: ${title}
-Description: ${description}
-User: ${req.user.email}
-`;
+      const fileContent = formatTaskForS3(task);
 
       await s3.putObject({
         Bucket: process.env.S3_BUCKET_NAME,
-        Key: `tasks/${title}-${Date.now()}.txt`,
+        Key: `tasks/${task.title}-${Date.now()}.txt`,
         Body: fileContent,
       }).promise();
 
