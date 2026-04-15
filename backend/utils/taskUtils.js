@@ -1,4 +1,3 @@
-// utils/taskUtils.js
 // Simple reusable helper functions
 
 export const formatStatus = (status) => {

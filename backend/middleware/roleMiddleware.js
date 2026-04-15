@@ -1,5 +1,3 @@
-// middleware/roleMiddleware.js
-
 // Only admin can access certain routes
 export const isAdmin = (req, res, next) => {
   if (req.user.role !== "admin") {

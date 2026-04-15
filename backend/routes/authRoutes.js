@@ -24,7 +24,7 @@ router.post("/register", async (req, res) => {
       },
     }).promise();
 
-    // 🔥 SNS NOTIFICATION (SAFE + DEBUG)
+    //  SNS NOTIFICATION (SAFE + DEBUG)
     try {
       console.log("Sending SNS for register...");
 

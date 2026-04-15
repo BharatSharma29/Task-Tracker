@@ -16,7 +16,7 @@ router.post("/", verifyToken, async (req, res) => {
   try {
     console.log("Create task request:", title);
 
-    // 🔹 Save to DynamoDB
+    //  Save to DynamoDB
     await dynamoDB.put({
       TableName: "Tasks",
       Item: {
@@ -28,7 +28,7 @@ router.post("/", verifyToken, async (req, res) => {
       },
     }).promise();
 
-    // 🔹 SNS Notification
+    //  SNS Notification
     try {
       const result = await sns.publish({
         Message: `Task Created: ${title}`,
@@ -41,7 +41,7 @@ router.post("/", verifyToken, async (req, res) => {
       console.error("SNS ERROR (TASK):", snsErr.message);
     }
 
-    // 🔹 SQS Message
+    //  SQS Message
     try {
       const sqsResult = await sqs.sendMessage({
         QueueUrl: process.env.SQS_QUEUE_URL,
@@ -57,7 +57,7 @@ router.post("/", verifyToken, async (req, res) => {
       console.error("SQS ERROR:", sqsErr.message);
     }
 
-    // 🔹 S3 Upload
+    //  S3 Upload
     try {
       const fileContent = `Task Created:
 Title: ${title}

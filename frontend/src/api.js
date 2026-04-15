@@ -1,5 +1,3 @@
-// src/api.js
-
 import axios from "axios";
 
 // Base URL of your backend server

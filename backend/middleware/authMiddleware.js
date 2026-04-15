@@ -1,5 +1,3 @@
-// middleware/authMiddleware.js
-
 import jwt from "jsonwebtoken";
 
 // This middleware checks if user is authenticated
