@@ -22,7 +22,7 @@ function Login({ setUser, goToRegister }) {
 
   return (
     <div className="container">
-      <h2>Sign-in</h2>
+      <h2>Login</h2>
 
       <input
         placeholder="Email"
