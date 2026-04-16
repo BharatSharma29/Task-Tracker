@@ -5,7 +5,7 @@ import sqs from "../config/sqs.js";
 import s3 from "../config/s3.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { isAdmin } from "../middleware/roleMiddleware.js";
-import { createTaskObject, formatTaskForSQS, formatTaskForS3 } from "../utils/taskUtil.js";
+import { createTaskObject, formatTaskForSQS, formatTaskForS3 } from "../utils/taskUtils.js";
 
 const router = express.Router();
 
